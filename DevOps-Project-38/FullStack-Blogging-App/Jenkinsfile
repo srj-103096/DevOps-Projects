@@ -34,9 +34,11 @@ pipeline {
         }
         
         stage('Test') {
-            steps {
+            steps {dir('DevOps-Project-38/FullStack-Blogging-App') {
+            sh 'mvn test'
                 sh "mvn test"
             }
+        }
         }
         
         stage('File System Scan') {
