@@ -197,9 +197,6 @@ pipeline {
         }
     }
 }
-                }
-            }
-        }
 stage('Verify the Deployment') {
     steps {
         withCredentials([
