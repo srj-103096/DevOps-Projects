@@ -95,19 +95,47 @@ pipeline {
             }
         }
         stage('Build & Tag Docker Image') {
-            steps {
-               script {
-                   withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                            sh "docker build -t abrahimcse/bloggingapp:latest ."
-                    }
-               }
+    steps {
+        dir('DevOps-Project-38/FullStack-Blogging-App') {
+            withCredentials([
+                usernamePassword(
+                    credentialsId: 'docker-cred',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )
+            ]) {
+                sh '''
+                    set -e
+
+                    echo "$DOCKER_PASSWORD" | /usr/bin/docker login \
+                        --username "$DOCKER_USERNAME" \
+                        --password-stdin
+
+                    /usr/bin/docker build \
+                        -t abrahimcse/bloggingapp:latest \
+                        .
+
+                    /usr/bin/docker images | grep bloggingapp
+                '''
             }
         }
-        stage('Docker Image Scan') {
-            steps {
-                sh "trivy image --format table -o trivy-image-report.html abrahimcse/bloggingapp:latest "
-            }
+    }
+}
+
+stage('Docker Image Scan') {
+    steps {
+        dir('DevOps-Project-38/FullStack-Blogging-App') {
+            sh '''
+                set -e
+
+                trivy image \
+                    --format table \
+                    -o trivy-image-report.html \
+                    abrahimcse/bloggingapp:latest
+            '''
         }
+    }
+}
         stage('Push Docker Image') {
             steps {
                script {
