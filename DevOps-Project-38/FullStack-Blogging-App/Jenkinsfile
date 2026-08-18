@@ -237,66 +237,55 @@ pipeline {
         // DEPLOY TO EKS
         // =========================================================
         stage('Deploy To Kubernetes') {
-            steps {
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-eks-cred']
-                ]) {
-                    sh '''
-                        set -e
+    steps {
+        withCredentials([
+            [$class: 'AmazonWebServicesCredentialsBinding',
+             credentialsId: 'aws-eks-cred']
+        ]) {
+            dir('DevOps-Project-38/FullStack-Blogging-App') {
+                sh '''
+                    set -e
 
-                        export PATH=/usr/local/bin:$PATH
+                    export PATH=/usr/local/bin:$PATH
 
-                        echo "======================================"
-                        echo "      AWS / EKS CONFIGURATION"
-                        echo "======================================"
+                    echo "======================================"
+                    echo "      AWS / EKS CONFIGURATION"
+                    echo "======================================"
 
-                        echo "===== AWS Identity ====="
+                    echo "===== AWS Identity ====="
+                    aws sts get-caller-identity
 
-                        aws sts get-caller-identity
+                    echo "===== Updating EKS Kubeconfig ====="
+                    aws eks update-kubeconfig \
+                        --region eu-north-1 \
+                        --name abrahimcse-cluster
 
+                    echo "===== Kubernetes Context ====="
+                    kubectl config current-context
 
-                        echo "===== Updating EKS Kubeconfig ====="
+                    echo "===== Kubernetes Nodes ====="
+                    kubectl get nodes
 
-                        aws eks update-kubeconfig \
-                            --region eu-north-1 \
-                            --name abrahimcse-cluster
+                    echo "======================================"
+                    echo "      DEPLOYING APPLICATION"
+                    echo "======================================"
 
+                    echo "===== Checking Deployment File ====="
+                    ls -la
+                    ls -la deployment-service.yaml
 
-                        echo "===== Kubernetes Context ====="
+                    echo "===== Applying Deployment ====="
 
-                        kubectl config current-context
+                    kubectl apply \
+                        -f deployment-service.yaml \
+                        -n webapps
 
-
-                        echo "===== Kubernetes Nodes ====="
-
-                        kubectl get nodes
-
-
-                        echo "======================================"
-                        echo "      DEPLOYING APPLICATION"
-                        echo "======================================"
-
-
-                        echo "===== Kubernetes Namespace ====="
-
-                        kubectl get namespace webapps \
-                            || kubectl create namespace webapps
-
-
-                        echo "===== Applying Deployment ====="
-
-                        kubectl apply \
-                            -f deployment-service.yaml \
-                            -n webapps
-
-
-                        echo "===== Deployment Applied Successfully ====="
-                    '''
-                }
+                    echo "===== Deployment Applied Successfully ====="
+                '''
             }
         }
-
+    }
+}
 
         // =========================================================
         // VERIFY DEPLOYMENT
