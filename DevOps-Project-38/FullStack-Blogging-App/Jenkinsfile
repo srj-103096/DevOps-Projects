@@ -18,9 +18,10 @@ pipeline {
         }
         stage('Compile') {
             steps {
-                dir('DevOps-Project-38/FullStack-Blogging-App')
+                dir('DevOps-Project-38/FullStack-Blogging-App'){
                 sh "mvn compile"
             }
+        }
         }
         
         stage('Test') {
