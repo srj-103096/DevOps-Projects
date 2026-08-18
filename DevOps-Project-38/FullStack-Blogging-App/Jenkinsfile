@@ -146,6 +146,28 @@ pipeline {
                 }
             }
         }
+        stage('Test AWS Credentials') {
+    steps {
+        withCredentials([
+            [$class: 'AmazonWebServicesCredentialsBinding',
+             credentialsId: 'aws-eks-cred']
+        ]) {
+            sh '''
+                set -e
+
+                echo "===== AWS Identity ====="
+                aws sts get-caller-identity
+
+                echo "===== EKS Status ====="
+                aws eks describe-cluster \
+                    --region eu-north-1 \
+                    --name abrahimcse-cluster \
+                    --query 'cluster.status' \
+                    --output text
+            '''
+        }
+    }
+}
 stage('Deploy To Kubernetes') {
     steps {
         withKubeConfig(
