@@ -146,25 +146,24 @@ pipeline {
                 }
             }
         }
+stage('Deploy To Kubernetes') {
+    steps {
+        withKubeConfig(
+            caCertificate: '',
+            clusterName: 'abrahimcse-cluster',
+            contextName: '',
+            credentialsId: 'k8-cred',
+            namespace: 'webapps',
+            restrictKubeConfigAccess: false,
+            serverUrl: 'https://1E4D1C79D402B9DE3521691F94079A72.yl4.eu-north-1.eks.amazonaws.com'
+        ) {
+            sh '''
+                set -e
 
-        stage('Deploy To Kubernetes') {
-            steps {
-                withKubeConfig(
-                    caCertificate: '',
-                    clusterName: 'abrahimcse-cluster',
-                    contextName: '',
-                    credentialsId: 'k8-cred',
-                    namespace: 'webapps',
-                    restrictKubeConfigAccess: false,
-                    serverUrl: 'YOUR_REAL_EKS_ENDPOINT'
-                ) {
-                    sh '''
-                        set -e
+                echo "===== Deploying to Kubernetes ====="
 
-                        echo "===== Deploying to Kubernetes ====="
-
-                        kubectl apply -f deployment-service.yaml
-                    '''
+                kubectl apply -f deployment-service.yaml
+            '''
                 }
             }
         }
