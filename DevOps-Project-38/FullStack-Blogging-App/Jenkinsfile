@@ -112,7 +112,7 @@ pipeline {
                         --password-stdin
 
                     /usr/bin/docker build \
-                        -t abrahimcse/bloggingapp:latest \
+                        -t suraj103096/bloggingapp:letest \
                         .
 
                     /usr/bin/docker images | grep bloggingapp
@@ -141,7 +141,7 @@ stage('Docker Image Scan') {
                     --scanners vuln \
                     --format table \
                     -o trivy-image-report.html \
-                    abrahimcse/bloggingapp:latest
+                    suraj103096/bloggingapp:latest
             '''
         }
     }
