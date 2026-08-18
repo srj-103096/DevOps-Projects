@@ -20,7 +20,13 @@ pipeline {
             steps {
                 dir('DevOps-Project-38/FullStack-Blogging-App'){
                 sh '''
+                echo "===== Maven Version ====="
                 mvn -version
+
+                echo "===== Java Version ====="
+                java -version
+
+                echo "===== Compile ====="
                 mvn compile
             '''
             }
