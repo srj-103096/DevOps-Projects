@@ -272,12 +272,12 @@ pipeline {
 
                     echo "===== Checking Deployment File ====="
                     ls -la
-                    ls -la deployment-service.yaml
+                    ls -la deployment-service.yml
 
                     echo "===== Applying Deployment ====="
 
                     kubectl apply \
-                        -f deployment-service.yaml \
+                        -f deployment-service.yml \
                         -n webapps
 
                     echo "===== Deployment Applied Successfully ====="
