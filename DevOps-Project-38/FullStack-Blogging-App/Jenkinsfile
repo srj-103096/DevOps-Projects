@@ -74,8 +74,10 @@ pipeline {
         }
         stage('Publish To Nexus') {
             steps {
-            withMaven(globalMavenSettingsConfig: 'global-settings', jdk: 'jdk17', maven: 'maven3', mavenSettingsConfig: '', traceability: true) {
-                    sh "mvn deploy"
+           dir('DevOps-Project-38/FullStack-Blogging-App') {
+            withMaven(maven: 'maven3') {
+                sh 'mvn deploy'
+            }
                 }
             }
         }
