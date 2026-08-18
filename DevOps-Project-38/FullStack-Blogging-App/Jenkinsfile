@@ -6,20 +6,36 @@ pipeline {
         maven 'maven3'
     }
 
+    environment {
+        // AWS CLI is installed here on your Jenkins server
+        PATH = "/usr/local/bin:${env.PATH}"
+    }
+
     stages {
 
+        // =========================================================
+        // GIT CHECKOUT
+        // =========================================================
         stage('Git Checkout') {
             steps {
-                git branch: 'master',
+                git(
+                    branch: 'master',
                     credentialsId: 'git-cred',
                     url: 'https://github.com/srj-103096/DevOps-Projects.git'
+                )
             }
         }
 
+
+        // =========================================================
+        // COMPILE
+        // =========================================================
         stage('Compile') {
             steps {
                 dir('DevOps-Project-38/FullStack-Blogging-App') {
                     sh '''
+                        set -e
+
                         echo "===== Maven Version ====="
                         mvn -version
 
@@ -33,21 +49,39 @@ pipeline {
             }
         }
 
+
+        // =========================================================
+        // TEST
+        // =========================================================
         stage('Test') {
             steps {
                 dir('DevOps-Project-38/FullStack-Blogging-App') {
-                    sh 'mvn test'
+                    sh '''
+                        set -e
+
+                        echo "===== Running Tests ====="
+                        mvn test
+                    '''
                 }
             }
         }
 
+
+        // =========================================================
+        // TRIVY FILE SYSTEM SCAN
+        // =========================================================
         stage('File System Scan') {
             steps {
                 dir('DevOps-Project-38/FullStack-Blogging-App') {
                     sh '''
                         set -e
 
+                        echo "===== Resolving Dependencies ====="
                         mvn dependency:resolve
+
+                        echo "===== Trivy File System Scan ====="
+
+                        export TMPDIR=/data/trivy/tmp
 
                         trivy fs \
                             --format table \
@@ -58,32 +92,35 @@ pipeline {
             }
         }
 
+
+        // =========================================================
+        // MAVEN BUILD
+        // =========================================================
         stage('Build') {
             steps {
                 dir('DevOps-Project-38/FullStack-Blogging-App') {
-                    sh 'mvn package -DskipTests'
+                    sh '''
+                        set -e
+
+                        echo "===== Maven Package ====="
+
+                        mvn package -DskipTests
+                    '''
                 }
             }
         }
 
-        /*
-         * NEXUS REMOVED
-         *
-         * Publish To Nexus stage has been removed.
-         */
 
-        /*
-         * SONARQUBE REMOVED
-         *
-         * SonarQube Analysis stage has been removed.
-         * Quality Gate stage has been removed.
-         */
-
+        // =========================================================
+        // DOCKER BUILD
+        // =========================================================
         stage('Build & Tag Docker Image') {
             steps {
                 dir('DevOps-Project-38/FullStack-Blogging-App') {
                     sh '''
                         set -e
+
+                        echo "===== Docker Build ====="
 
                         /usr/bin/docker build \
                             -t suraj103096/bloggingapp:latest \
@@ -97,6 +134,10 @@ pipeline {
             }
         }
 
+
+        // =========================================================
+        // TRIVY DOCKER IMAGE SCAN
+        // =========================================================
         stage('Docker Image Scan') {
             steps {
                 dir('DevOps-Project-38/FullStack-Blogging-App') {
@@ -122,6 +163,10 @@ pipeline {
             }
         }
 
+
+        // =========================================================
+        // PUSH TO DOCKER HUB
+        // =========================================================
         stage('Push Docker Image') {
             steps {
                 withCredentials([
@@ -134,125 +179,235 @@ pipeline {
                     sh '''
                         set -e
 
+                        echo "===== Docker Login ====="
+
                         echo "$DOCKER_PASSWORD" | /usr/bin/docker login \
                             --username "$DOCKER_USERNAME" \
                             --password-stdin
 
+                        echo "===== Docker Push ====="
+
                         /usr/bin/docker push \
                             suraj103096/bloggingapp:latest
+
+                        echo "===== Docker Logout ====="
 
                         /usr/bin/docker logout
                     '''
                 }
             }
         }
+
+
+        // =========================================================
+        // TEST AWS CREDENTIALS
+        // =========================================================
         stage('Test AWS Credentials') {
-    steps {
-        withCredentials([
-            [$class: 'AmazonWebServicesCredentialsBinding',
-             credentialsId: 'aws-eks-cred']
-        ]) {
-            sh '''
-                set -e
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-eks-cred']
+                ]) {
+                    sh '''
+                        set -e
 
-                echo "===== AWS Identity ====="
-                aws sts get-caller-identity
+                        export PATH=/usr/local/bin:$PATH
 
-                echo "===== EKS Status ====="
-                aws eks describe-cluster \
-                    --region eu-north-1 \
-                    --name abrahimcse-cluster \
-                    --query 'cluster.status' \
-                    --output text
-            '''
+                        echo "===== AWS CLI ====="
+                        which aws
+                        aws --version
+
+                        echo "===== AWS Identity ====="
+                        aws sts get-caller-identity
+
+                        echo "===== EKS Status ====="
+
+                        aws eks describe-cluster \
+                            --region eu-north-1 \
+                            --name abrahimcse-cluster \
+                            --query 'cluster.status' \
+                            --output text
+                    '''
+                }
+            }
         }
-    }
-}
+
+
+        // =========================================================
+        // DEPLOY TO EKS
+        // =========================================================
         stage('Deploy To Kubernetes') {
-    steps {
-        withCredentials([
-            [$class: 'AmazonWebServicesCredentialsBinding',
-             credentialsId: 'aws-eks-cred']
-        ]) {
-            sh '''
-                set -e
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-eks-cred']
+                ]) {
+                    sh '''
+                        set -e
 
-                echo "===== AWS Identity ====="
-                aws sts get-caller-identity
+                        export PATH=/usr/local/bin:$PATH
 
-                echo "===== Configure EKS ====="
-                aws eks update-kubeconfig \
-                    --region eu-north-1 \
-                    --name abrahimcse-cluster
+                        echo "======================================"
+                        echo "      AWS / EKS CONFIGURATION"
+                        echo "======================================"
 
-                echo "===== Kubernetes Context ====="
-                kubectl config current-context
+                        echo "===== AWS Identity ====="
 
-                echo "===== Kubernetes Nodes ====="
-                kubectl get nodes
+                        aws sts get-caller-identity
 
-                echo "===== Deploying Application ====="
-                kubectl apply -f deployment-service.yaml
-            '''
+
+                        echo "===== Updating EKS Kubeconfig ====="
+
+                        aws eks update-kubeconfig \
+                            --region eu-north-1 \
+                            --name abrahimcse-cluster
+
+
+                        echo "===== Kubernetes Context ====="
+
+                        kubectl config current-context
+
+
+                        echo "===== Kubernetes Nodes ====="
+
+                        kubectl get nodes
+
+
+                        echo "======================================"
+                        echo "      DEPLOYING APPLICATION"
+                        echo "======================================"
+
+
+                        echo "===== Kubernetes Namespace ====="
+
+                        kubectl get namespace webapps \
+                            || kubectl create namespace webapps
+
+
+                        echo "===== Applying Deployment ====="
+
+                        kubectl apply \
+                            -f deployment-service.yaml \
+                            -n webapps
+
+
+                        echo "===== Deployment Applied Successfully ====="
+                    '''
+                }
+            }
+        }
+
+
+        // =========================================================
+        // VERIFY DEPLOYMENT
+        // =========================================================
+        stage('Verify the Deployment') {
+            steps {
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-eks-cred']
+                ]) {
+                    sh '''
+                        set -e
+
+                        export PATH=/usr/local/bin:$PATH
+
+                        echo "======================================"
+                        echo "      VERIFYING EKS DEPLOYMENT"
+                        echo "======================================"
+
+
+                        echo "===== Configure EKS ====="
+
+                        aws eks update-kubeconfig \
+                            --region eu-north-1 \
+                            --name abrahimcse-cluster
+
+
+                        echo "===== Kubernetes Context ====="
+
+                        kubectl config current-context
+
+
+                        echo "===== Pods ====="
+
+                        kubectl get pods -n webapps
+
+
+                        echo "===== Services ====="
+
+                        kubectl get svc -n webapps
+
+
+                        echo "===== Deployments ====="
+
+                        kubectl get deployment -n webapps
+
+
+                        echo "===== ReplicaSets ====="
+
+                        kubectl get replicasets -n webapps
+
+
+                        echo "======================================"
+                        echo "      DEPLOYMENT VERIFICATION DONE"
+                        echo "======================================"
+                    '''
+                }
+            }
         }
     }
-}
-stage('Verify the Deployment') {
-    steps {
-        withCredentials([
-            [$class: 'AmazonWebServicesCredentialsBinding',
-             credentialsId: 'aws-eks-cred']
-        ]) {
-            sh '''
-                set -e
 
-                echo "===== Configure EKS ====="
 
-                aws eks update-kubeconfig \
-                    --region eu-north-1 \
-                    --name abrahimcse-cluster
-
-                echo "===== Pods ====="
-                kubectl get pods -n webapps
-
-                echo "===== Services ====="
-                kubectl get svc -n webapps
-
-                echo "===== Deployment ====="
-                kubectl get deployment -n webapps
-            '''
-        }
-    }
-}
+    // =============================================================
+    // POST ACTIONS
+    // =============================================================
     post {
         always {
             script {
+
                 def jobName = env.JOB_NAME
                 def buildNumber = env.BUILD_NUMBER
                 def pipelineStatus = currentBuild.result ?: 'UNKNOWN'
-                def bannerColor = pipelineStatus.toUpperCase() == 'SUCCESS' ? 'green' : 'red'
+
+                def bannerColor =
+                    pipelineStatus.toUpperCase() == 'SUCCESS'
+                        ? 'green'
+                        : 'red'
+
 
                 def body = """
                     <html>
                     <body>
+
                     <div style="border: 4px solid ${bannerColor}; padding: 10px;">
-                    <h2>${jobName} - Build ${buildNumber}</h2>
 
-                    <div style="background-color: ${bannerColor}; padding: 10px;">
-                        <h3 style="color: white;">
-                            Pipeline Status: ${pipelineStatus.toUpperCase()}
-                        </h3>
+                        <h2>
+                            ${jobName} - Build ${buildNumber}
+                        </h2>
+
+                        <div style="background-color: ${bannerColor}; padding: 10px;">
+
+                            <h3 style="color: white;">
+                                Pipeline Status:
+                                ${pipelineStatus.toUpperCase()}
+                            </h3>
+
+                        </div>
+
+                        <p>
+                            Check the
+                            <a href="${BUILD_URL}">
+                                Jenkins Console Output
+                            </a>
+                        </p>
+
                     </div>
 
-                    <p>
-                        Check the
-                        <a href="${BUILD_URL}">console output</a>.
-                    </p>
-
-                    </div>
                     </body>
                     </html>
                 """
+
 
                 emailext(
                     subject: "${jobName} - Build ${buildNumber} - ${pipelineStatus.toUpperCase()}",
