@@ -43,7 +43,12 @@ pipeline {
         
         stage('File System Scan') {
             steps {
-                sh "trivy fs --format table -o trivy-fs-report.html ."
+                dir('DevOps-Project-38/FullStack-Blogging-App') {
+            sh '''
+                mvn dependency:resolve
+                trivy fs --format table -o trivy-fs-report.html .
+            '''
+        }
             }
         }
         stage('SonarQube Analsyis') {
