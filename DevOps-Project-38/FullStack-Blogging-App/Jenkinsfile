@@ -139,10 +139,24 @@ stage('Docker Image Scan') {
 }
         stage('Push Docker Image') {
             steps {
-               script {
-                   withDockerRegistry(credentialsId: 'docker-cred', toolName: 'docker') {
-                            sh "docker push abrahimcse/bloggingapp:latest"
-                    }
+        withCredentials([
+            usernamePassword(
+                credentialsId: 'docker-cred',
+                usernameVariable: 'DOCKER_USERNAME',
+                passwordVariable: 'DOCKER_PASSWORD'
+            )
+        ]) {
+            sh '''
+                set -e
+
+                echo "$DOCKER_PASSWORD" | /usr/bin/docker login \
+                    --username "$DOCKER_USERNAME" \
+                    --password-stdin
+
+                /usr/bin/docker push abrahimcse/bloggingapp:latest
+
+                /usr/bin/docker logout
+            '''
                }
             }
         }
