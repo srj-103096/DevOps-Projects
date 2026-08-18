@@ -112,7 +112,7 @@ pipeline {
                         --password-stdin
 
                     /usr/bin/docker build \
-                        -t suraj103096/bloggingapp:tagname \
+                        -t suraj103096/bloggingapp:latest \
                         .
 
                     /usr/bin/docker images | grep bloggingapp
@@ -141,7 +141,7 @@ stage('Docker Image Scan') {
                     --scanners vuln \
                     --format table \
                     -o trivy-image-report.html \
-                    suraj103096/bloggingapp:tagname
+                    suraj103096/bloggingapp:latest
             '''
         }
     }
@@ -162,7 +162,7 @@ stage('Docker Image Scan') {
                     --username "$DOCKER_USERNAME" \
                     --password-stdin
 
-                /usr/bin/docker push suraj103096/bloggingapp:tagname
+                /usr/bin/docker push suraj103096/bloggingapp:latest
 
                 /usr/bin/docker logout
             '''
