@@ -128,7 +128,16 @@ stage('Docker Image Scan') {
             sh '''
                 set -e
 
-                trivy image \
+                export TMPDIR=/data/trivy/tmp
+
+                echo "===== Trivy Storage ====="
+                df -h /data/trivy
+
+                echo "===== Docker Image Scan ====="
+
+                trivy \
+                    --cache-dir /data/trivy/cache \
+                    image \
                     --scanners vuln \
                     --format table \
                     -o trivy-image-report.html \
