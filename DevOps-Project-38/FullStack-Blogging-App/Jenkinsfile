@@ -129,6 +129,7 @@ stage('Docker Image Scan') {
                 set -e
 
                 trivy image \
+                    --scanners vuln \
                     --format table \
                     -o trivy-image-report.html \
                     abrahimcse/bloggingapp:latest
